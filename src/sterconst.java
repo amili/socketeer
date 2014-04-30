@@ -24,6 +24,12 @@ public class sterconst {
 	public static int MESSAGE_PING = 6;
 	public static int MESSAGE_PONG = 7;
 	public static int MESSAGE_ERROR = 99;
+
+	// UDP relay to do
+	public static int MESSAGE_UDP = 3;
+	public static int MESSAGE_UDP_FROM = 4;
+	public static int MESSAGE_UDP_TO = 5;
+	public static int MESSAGE_UDP_DATAGRAM = 6;
 	
 	// message parameters
 	public static int MESSAGE_OPEN_PARAMETER_HOST = 1;

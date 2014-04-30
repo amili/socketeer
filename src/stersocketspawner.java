@@ -68,7 +68,13 @@ public class stersocketspawner implements Runnable {
 						stermessage.getNextSeqID(), sterconst.MESSAGE_SEND+"");
 				acm.setCommandNameConstant(sterconst.MESSAGE_SEND+"");
 				acm.setCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+"", secondReply);
-				cli.send(sosi.getConfig().getChannelTopic(profile), acm.getAsSerial());
+				//cli.send(sosi.getConfig().getChannelTopic(profile), acm.getAsSerial());
+				cli.send(sosi.getConfig().getChannelTopic(profile),
+						acm.getAsEncryptedSerial(
+								sosi.getConfig().getChannelEncryptionKey(profile), 
+								sosi.getConfig().getChannelEncryptionIterations(profile)
+								)
+						);
 			}
 			
 		} catch (IOException e) {

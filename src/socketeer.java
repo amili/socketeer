@@ -68,22 +68,14 @@ public class socketeer {
 		
 		// init the general stuff (server)
 		if (c.isMessagingServerEnabled() == true) {
-		try {
-			Server s = new Server( c.getMessagingServerPort() );
-		} catch (IOException e) {
-			e.printStackTrace();
+			try {
+				Server s = new Server( c.getMessagingServerPort() );
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
-		}
-
-		// init the client
-		Client cli = null;
-		try {
-			cli = new Client( "localhost", c.getMessagingServerPort(), "ser", "ser" );
-		} catch (LoginException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		
+		// TODO: init the "glue code, if wanted", TBD...
 		
 		String[] pns = c.getProfileNames(null);
 		
@@ -92,7 +84,7 @@ public class socketeer {
 			if (c.isSpanningAndResolvingSink(pns[i]) == true) {
 				stersourcesink sosi = sterpool.sourcesinkfactory();
 				sosi.init(c.getChannel(pns[i]), null,
-						  c, pns[i], cli);
+						  c, pns[i], null);
 			}
 		}
 		for (int i=0;i<pns.length;i++) { // sources
@@ -100,7 +92,7 @@ public class socketeer {
 				stersourcespawner spawn = new stersourcespawner();
 				spawn.setPort(c.getServerPort(pns[i]));
 				spawn.setData(c.getChannel(pns[i]),
-						  c, pns[i], cli);
+						  c, pns[i], null);
 				Thread t = new Thread(spawn);
 				t.start();
 			}

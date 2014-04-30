@@ -4,6 +4,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
 
+import javax.security.auth.login.LoginException;
+
 import net.ser1.stomp.Client;
 import net.ser1.stomp.Listener;
 
@@ -66,8 +68,32 @@ public class stersourcesink implements Runnable {
 	
 	boolean isSinkInsteadSource = false;
 	
+	Client initClient() {
+		try {
+			sterlogger.getLogger().info("init client for channel:"+
+								getConfig().getChannelHost(getProfile())+","+
+								getConfig().getChannelPort(getProfile())+" "+
+								getConfig().getChannelUsername(getProfile())+" "+
+								getConfig().getChannelPassword(getProfile())
+								);
+			cli = new Client( getConfig().getChannelHost(getProfile()),
+							getConfig().getChannelPort(getProfile()),
+							getConfig().getChannelUsername(getProfile()), 
+							getConfig().getChannelPassword(getProfile())
+							);
+			sterlogger.getLogger().info("client inited."+cli);
+			return cli;
+		} catch (LoginException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 	void setSinkCloseMessageToHostBecauseOfError(stermessage tsm) {
 		stermessage sm = new stermessage();
+		sm.setCryptography(getConfig().getChannelEncryptionKey(profile), getConfig().getChannelEncryptionIterations(profile));
 		sm.setMessage(-1, 
 					stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),getResourceID()),
 					stermessage.joinClusterNodeSubnode(tsm.getFromCluster(), tsm.getFromNode(), tsm.getFromResourceID())
@@ -91,42 +117,44 @@ public class stersourcesink implements Runnable {
 	}
 	
 	boolean init (String channel,
-				Socket s,
-				sterconfig conf, String profile,
-				Client cli) {
-		
+			Socket s,
+			sterconfig conf, String profile,
+			Client cli) {
+
 		this.cli = cli;
 		this.conf = conf;
 		this.profile = profile;
-		
+
+		if (cli == null) {cli = initClient();}
+
 		setClusterID(conf.getClusterName(profile));
 		setNodeID(conf.getNodeName(profile));
 		this.resourceID = getNodeID()+stermessage.getUniqueID();
-		
-		sterlogger.getLogger().info("sink not source (0):"+isSinkInsteadSource+" "+s);
-		
+
+		sterlogger.getLogger().info("sink not source (0):"+isSinkInsteadSource+" "+s+ "cli:"+cli);
+
 		sourceTCPsock = s;
 		if (s == null) {isSinkInsteadSource = true;}
-		
+
 		sterlogger.getLogger().info("sink not source:"+isSinkInsteadSource);
 
 		handler (null);
-		
+
 		if (isSinkInsteadSource == false) { // source
 
 			// check accesslist
 			if (
-			   (conf.isAccessListAuthorised(profile, s.getInetAddress().getHostAddress()) == false) &&
-			   (conf.isAccessListAuthorised(profile, s.getInetAddress().getHostName()) == false)
-			   ){
+					(conf.isAccessListAuthorised(profile, s.getInetAddress().getHostAddress()) == false) &&
+					(conf.isAccessListAuthorised(profile, s.getInetAddress().getHostName()) == false)
+					){
 				return false;
 			}
-			
+
 			// init connection parameters
 			String targethost = conf.getFixedHost(profile);
 			int targetport = conf.getFixedPort(profile);
 			int targettype = conf.getFixedSocketType(profile);
-			
+
 			// handle SOCKS, if enabled
 			sterproxy sp = new sterproxy();
 			if (targethost == null) {
@@ -144,57 +172,79 @@ public class stersourcesink implements Runnable {
 					e.printStackTrace();
 				}
 			}
-			
-			// Check black and white list
-			boolean auth =
-			conf.isAuthorisedCombination(profile, getClusterID(), conf.getPeerNodeName(profile), targethost, targetport);
-			if (auth == false) {
-				sterlogger.getLogger().info("%%%%% Unathorised:"+targethost + ","+targetport+","+targettype);
-				return false;
-				}
-			
-			// TODO: remapping
-			String hostport = conf.getRemappingForProfileAsHostPortPair(profile, targethost, targetport);
-			if (hostport != null) {
-				sterlogger.getLogger().info("%%%%% Remapping:"+hostport);
-				targethost = hostport.split(" ")[0];
-				targetport = Integer.parseInt(hostport.split(" ")[1]);
-			}
-			
-			// init the communication by sending message
-			stermessage sm = new stermessage();
-			String uniqueid = stermessage.getUniqueID();
-			sm.setMessage(-1,
-					stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
-					stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
-					stermessage.getNextSeqID(), sterconst.MESSAGE_OPEN+"");
-			sm.setCommandNameConstant(sterconst.MESSAGE_OPEN+"");
-			sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_HOST+"", targethost);
-			sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_PORT+"", ""+targetport);
-			sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"", ""+targettype);
-			if (sp.getSecondSocksBindReply() != null) {
-				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_SECONDREPLY+"", ""+sp.getSecondSocksBindReply());
-			}
-			sterlogger.getLogger().info("message is:"+sm.getAsSerial());
 
-			// test
-			sterlogger.getLogger().info("init message passed with command :"+sm.getCommandNameConstant());
-			cli.send(getConfig().getChannelTopic(profile), sm.getAsSerial());
-			
-			// connect backwards
-			sterrelaythread bst = sterpool.relayfactory(getThisOne());
-			try {
-				bst.initTCP(getSourceTCPsock().getInputStream(),
+			if (targettype != sterconst.SOCKET_TYPE_UDP) {	
+				// Check black and white list
+				boolean auth =
+						conf.isAuthorisedCombination(profile, getClusterID(), conf.getPeerNodeName(profile), targethost, targetport);
+				if (auth == false) {
+					sterlogger.getLogger().info("%%%%% Unathorised:"+targethost + ","+targetport+","+targettype);
+					return false;
+				}
+
+				// TODO: remapping
+				String hostport = conf.getRemappingForProfileAsHostPortPair(profile, targethost, targetport);
+				if (hostport != null) {
+					sterlogger.getLogger().info("%%%%% Remapping:"+hostport);
+					targethost = hostport.split(" ")[0];
+					targetport = Integer.parseInt(hostport.split(" ")[1]);
+				}
+
+				// init the communication by sending message
+				stermessage sm = new stermessage();
+				String uniqueid = stermessage.getUniqueID();
+				sm.setMessage(-1,
 						stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
 						stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
-						cli,getConfig(),profile);
-				new Thread(bst).start();
-			} catch (IOException e) {
-				e.printStackTrace();
+						stermessage.getNextSeqID(), sterconst.MESSAGE_OPEN+"");
+				sm.setCommandNameConstant(sterconst.MESSAGE_OPEN+"");
+				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_HOST+"", targethost);
+				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_PORT+"", ""+targetport);
+				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"", ""+targettype);
+				if (sp.getSecondSocksBindReply() != null) {
+					sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_SECONDREPLY+"", ""+sp.getSecondSocksBindReply());
+				}
+				sterlogger.getLogger().info("message is:"+sm.getAsSerial());
+
+				// test
+				sterlogger.getLogger().info("init message passed with command :"+sm.getCommandNameConstant()+" for profile:"+getConfig().getChannelTopic(profile)+ "for cli:"+cli);
+				//cli.send(getConfig().getChannelTopic(profile), sm.getAsSerial());
+				cli.send(getConfig().getChannelTopic(profile),
+						sm.getAsEncryptedSerial(
+								conf.getChannelEncryptionKey(profile),
+								conf.getChannelEncryptionIterations(profile)
+								)
+						);
+				
+				// connect backwards
+				sterrelaythread bst = sterpool.relayfactory(getThisOne());
+				try {
+					bst.initTCP(getSourceTCPsock().getInputStream(),
+							stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
+							stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
+							cli,getConfig(),profile);
+					new Thread(bst).start();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				sterlogger.getLogger().info("relay reference(1):"+bst+","+bst.getFrom()+","+bst.getTo());
+				sterpool.debugRelayThread();		
+
+			} else {	// TODO: UDP
+
+				// TODO: some kind of remote UDP assotiation initing
+				
+				// connect backwards
+				sterUDPrelay udr = new sterUDPrelay();
+				udr.init(targethost, targetport,
+						s.getLocalSocketAddress().toString() , s.getLocalPort(),
+						getThisOne(),
+						resourceID,
+						isSinkInsteadSource);
+				Thread udpt = new Thread(udr);
+				udpt.start();
+				
 			}
-			sterlogger.getLogger().info("relay reference(1):"+bst+","+bst.getFrom()+","+bst.getTo());
-			sterpool.debugRelayThread();
-			
 		} else {	// sink
 			// nothing (for now)
 		}
@@ -207,7 +257,12 @@ public class stersourcesink implements Runnable {
 
 			public void message(Map header, String body) {
 				stermessage sm = new stermessage();
-				sm.setFromSerial(body);
+				
+				sterlogger.getLogger().info("body is:"+body);
+				//sm.setFromSerial(body);
+				sm.setFromEncryptedSerial(body, getConfig().getChannelEncryptionKey(profile), 
+						getConfig().getChannelEncryptionIterations(profile));
+				
 				sterlogger.getLogger().info("message handler:"+isSinkInsteadSource+","+sm.getAsSerial());
 
 				// chek if correct address
@@ -315,7 +370,7 @@ public class stersourcesink implements Runnable {
 					if ( sm.getCommandNameConstant() == sterconst.MESSAGE_RESOLVE_REQUEST) {
 						String hostname = sm.getCommandParameter(sterconst.MESSAGE_RESOLVE_HOSTNAME+"");
 						int restype = Integer.parseInt(sm.getCommandParameter(sterconst.MESSAGE_RESOLVE_TYPE+""));
-						sterdnresolver resolv = new sterdnresolver(hostname);
+						sterdnsresolver resolv = new sterdnsresolver(hostname);
 						// TODO: form and send the message
 						stermessage dnsres = new stermessage();
 						dnsres.setMessage(-1,
@@ -324,7 +379,13 @@ public class stersourcesink implements Runnable {
 								stermessage.getNextSeqID(), sterconst.MESSAGE_RESOLVE_RESPONSE+"");
 						dnsres.setCommandNameConstant(sterconst.MESSAGE_RESOLVE_RESPONSE+"");
 						dnsres.setCommandParameter(sterconst.MESSAGE_RESOLVE_IP+"", resolv.getFirstIPV4Address());
-						cli.send(getConfig().getChannelTopic(profile), dnsres.getAsSerial());
+						//cli.send(getConfig().getChannelTopic(profile), dnsres.getAsSerial());
+						cli.send(getConfig().getChannelTopic(profile),
+								dnsres.getAsEncryptedSerial(
+										conf.getChannelEncryptionKey(profile),
+										conf.getChannelEncryptionIterations(profile)
+										)
+								);
 					}
 					if ( sm.getCommandNameConstant() == sterconst.MESSAGE_OPEN) {
 						sterlogger.getLogger().info("open message!"+sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+""));

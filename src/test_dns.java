@@ -13,7 +13,7 @@ public class test_dns {
 	 */
 	public static void main(String[] args) {
 		
-		sterdnresolver dns = new sterdnresolver("www.google.com");
+		sterdnsresolver dns = new sterdnsresolver("www.google.com");
 		System.out.println("Resolvance:"+dns.getFirstIPV4Address());
 		
 	}

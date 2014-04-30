@@ -21,6 +21,9 @@ public class stermessage {
 	int sequence;
 	String command;
 	
+	String cryptkey;
+	int cryptiter;
+	
 	static protected int newseed = 0;
 	static protected int seqid = 0;
 	
@@ -108,6 +111,11 @@ public class stermessage {
 		return Integer.parseInt(command.substring(0, 1));
 	}
 	
+	void setCryptography(String password, int iterations) {
+		this.cryptkey = password;
+		this.cryptiter = iterations;
+	}
+	
 	void setCommandNameConstant(String comnconst) {
 		if (command == null) {command = "0";}
 		if (command.length() < 1) {command = "0";}
@@ -163,6 +171,7 @@ public class stermessage {
 	}
 	
 	void setFromSerial(String serial) {
+		//TODO: check validity (i.e., via a hash!?)
 		String[] parts = serial.split(" ");
 		time = Long.parseLong(parts[0]);
 		from = parts[1];
@@ -171,8 +180,54 @@ public class stermessage {
 		command = parts[4];
 	}
 	
+	void setFromEncryptedSerial(String serial, String password) {
+		if ((password == null) && (cryptkey == null) ){
+			setFromSerial(serial);
+		} else {
+			if (password != null) {
+				setFromSerial(stercrypt.DecryptWithPassword(serial, password));
+				return;
+			}
+		}
+		setFromSerial(stercrypt.DecryptWithPassword(serial, cryptkey));
+	}
+	
+	void setFromEncryptedSerial(String serial, String password, int successive) {
+		if ((password == null) && (cryptkey == null)) {
+			setFromSerial(serial);
+		} else {
+			if (password != null) {
+				setFromSerial(stercrypt.DecryptWithPassword(serial, password, successive));
+				return;
+			}
+		setFromSerial(stercrypt.DecryptWithPassword(serial, cryptkey, successive));	
+		}
+	}
+	
 	String getAsSerial() {
 		return time+" "+from+" "+to+" "+sequence+" "+command;
+	}
+	
+	String getAsEncryptedSerial(String password) {
+		if ((password == null) && (cryptkey == null)) {
+			return getAsSerial();
+		} else {
+			if (password != null) {
+				return stercrypt.EncryptWithPassword(getAsSerial(), password);	
+			}
+			return stercrypt.EncryptWithPassword(getAsSerial(), cryptkey);
+		}
+	}
+	
+	String getAsEncryptedSerial(String password,int successive) {
+		if ((password == null) && (cryptkey == null)) {
+			return getAsSerial();
+		} else {
+			if (password != null) {
+				return stercrypt.EncryptWithPassword(getAsSerial(), password, successive);
+			}
+			return stercrypt.EncryptWithPassword(getAsSerial(), cryptkey, successive);	
+		}
 	}
 	
 	static String joinClusterNode(String cluster, String node) {

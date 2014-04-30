@@ -346,25 +346,46 @@ public class sterconfig {
 	}
 	
 	String getChannelUsername(String profile) {
-		String[] res = getChannel(profile).split("/");
-		try {
-			return URLDecoder.decode(res[2].split("&")[0],"UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			return null;
-		}
+		String un = getChannelParameterByKey(profile, "username");
+		if (un == null) return "";
+		return un;
 	}
 	
 	String getChannelPassword(String profile) {
-		String[] res = getChannel(profile).split("/");
-		try {
-			return URLDecoder.decode(res[2].split("&")[1],"UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-			return null;
-		}
+		String pass = getChannelParameterByKey(profile, "password");
+		if (pass == null) return "";
+		return pass;
 	}
-		
+	
+	//TODO
+	String getChannelEncryptionKey(String profile) {
+		String ck = getChannelParameterByKey(profile, "codekey");
+		//if (ck == null) return "";
+		return ck;
+	}
+	int getChannelEncryptionIterations(String profile) {
+		String iter = getChannelParameterByKey(profile, "keyiteration");
+		if (iter == null) return 1;
+		return Integer.parseInt(iter);
+	}
+	
+	String getChannelParameterByKey(String profile, String key) {
+		String[] res = getChannel(profile).split("\\?");
+		if (res.length < 2) return null;
+		String[] kvpairs = res[res.length-1].split("&");
+		for (int i=0;i<kvpairs.length;i++) {
+			String[] kv = kvpairs[i].split("=");
+			try {
+				if (URLDecoder.decode(kv[0],"UTF-8").equals(key)) {
+					return URLDecoder.decode(kv[1],"UTF-8");
+				}
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		}
+		return null;
+	}
+	
 	int getServerPort(String profile) {
 		sterlogger.getLogger().info("P="+profile);
 		return Integer.parseInt(p.getProperty("socketeer.sourcesink."+profile+".serverport"));

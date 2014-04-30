@@ -67,7 +67,10 @@ public class sterrelaythread implements Runnable {
 				if (hexvalue.length() < 2) {hexvalue = "0"+hexvalue;} 
 				sm.setCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+"", hexvalue); 
 				sterlogger.getLogger().info("to be sent ["+conf.getChannelTopic(profile)+"]:"+sm.getAsSerial());
-				cli.send(conf.getChannelTopic(profile), sm.getAsSerial());
+				//cli.send(conf.getChannelTopic(profile), sm.getAsSerial());
+				cli.send(conf.getChannelTopic(profile),
+						sm.getAsEncryptedSerial(conf.getChannelEncryptionKey(profile),
+						conf.getChannelEncryptionIterations(profile)));
 				sterpool.debugRelayThread();
 				c = is.read();	
 			}
@@ -80,7 +83,13 @@ public class sterrelaythread implements Runnable {
 		sm.setCommandNameConstant(sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+"",from);
 		sterlogger.getLogger().info("socket closed:"+sm.getCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+""));
-		cli.send(conf.getChannelTopic(profile), sm.getAsSerial());	
+		//cli.send(conf.getChannelTopic(profile), sm.getAsSerial());
+		cli.send(conf.getChannelTopic(profile),
+				sm.getAsEncryptedSerial(
+						conf.getChannelEncryptionKey(profile),
+						conf.getChannelEncryptionIterations(profile)
+						)
+				);
 	}
 	
 	void setUDPinsteadTCP() {
