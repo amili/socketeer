@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.util.Vector;
 
 /**
  * 
@@ -20,7 +21,6 @@ public class sterproxy {
 	boolean proxysocks4a = false;
 	boolean proxysocks5 = true;
 	boolean proxyhttp = true;
-	
 	boolean proxybycontent = false;
 	
 	String host = null;
@@ -75,7 +75,7 @@ public class sterproxy {
 		proxybycontent = conf.isContentRedirectingenabled(profile);
 		
 		try {
-			int one = is.read();
+			int one = is.read();			
 			if (one < 0) {
 				return false;
 			}
@@ -498,9 +498,10 @@ public class sterproxy {
 				}
 				sterlogger.getLogger().info("HTTP2!"+host+","+port);
 				line = br.readLine();
+				Vector headers = new Vector();
 				while (line.equals("") == false) {
-					// TODO: handle headers, forward if not connect method;
 					line = br.readLine();
+					headers.add(line);
 					sterlogger.getLogger().info("line="+line+"("+line.length()+")");
 				}
 				sterlogger.getLogger().info("HTTP3!"+line+ ","+ httpver);
@@ -511,8 +512,7 @@ public class sterproxy {
 					bw.write(""+'\n');
 					bw.flush();	
 				} else {
-					// TODO: first line chop host
-					// read all and relay
+					// TODO, send the headers somehow, when opened
 				}
 				sterlogger.getLogger().info("HTTP4!");
 			}
@@ -523,8 +523,6 @@ public class sterproxy {
 			e.printStackTrace();
 			return false;
 		}
-		
-		// TODO: whitelist, blacklist, maplist handling
 		
 		return true;
 		
