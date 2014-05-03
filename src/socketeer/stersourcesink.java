@@ -244,6 +244,9 @@ public class stersourcesink implements Runnable {
 				if (sp.getSecondSocksBindReply() != null) {
 					sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_SECONDREPLY+"", ""+sp.getSecondSocksBindReply());
 				}
+				if (sp.getForwardRelay() != null) {
+					sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_FORWARDONRELAY+"", ""+sp.getForwardRelay());
+				}
 				sterlogger.getLogger().info("message is:"+sm.getAsSerial());
 
 				// test
@@ -466,6 +469,10 @@ public class stersourcesink implements Runnable {
 												getConfig(), getProfile()
 												);
 								new Thread(st).start();
+								String forwardrelay = sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_FORWARDONRELAY+"");
+								if (forwardrelay != null) {
+									writeHexToOutputStream(rse.getOutputStream(), forwardrelay);
+								}
 							} catch (IOException e) {
 								e.printStackTrace();
 							}

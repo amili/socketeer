@@ -29,6 +29,7 @@ public class sterproxy {
 	int type = sterconst.SOCKET_TYPE_CONNECTION;
 	
 	String secondSocksBindHexReply = null;
+	String openForwardRelay = null;
 	
 	String getHost() {
 		return host;
@@ -58,6 +59,10 @@ public class sterproxy {
 		return secondSocksBindHexReply;
 	}
 	
+	String getForwardRelay() {
+		return openForwardRelay;
+	}
+	
 	boolean isHTTPenabled() {
 		return proxyhttp;
 	}
@@ -66,7 +71,17 @@ public class sterproxy {
 		return proxybycontent;
 	}
 	
-	// TODO: various HTTP(S) proxy modes
+	String ToHex(String toConvert) {
+		String res = "";
+		for (int i=0;i<toConvert.length();i++) {
+			String hexvalue = Integer.toHexString(toConvert.getBytes()[i]);
+			if (hexvalue.length() < 2) {hexvalue= "0"+hexvalue;}
+			res = res + hexvalue;
+		}
+		return res;
+	}
+	
+	// TODO: improvement of various HTTP(S) proxy modes
 	
 	boolean initProxy (InputStream is, OutputStream os, sterconfig conf, String profile) {
 		
@@ -513,7 +528,13 @@ public class sterproxy {
 					bw.write(""+'\n');
 					bw.flush();	
 				} else {
-					// TODO, send the headers somehow, when opened
+					if ((one == 'G') || (one == 'H') || (one == 'P') ) {
+						openForwardRelay = ""; // TODO, test sending the headers, when opened
+						for (int i = 0;i<headers.size();i++) {
+							openForwardRelay = openForwardRelay + (String)headers.get(i)+'\r'+'\n';
+						}
+						openForwardRelay = ToHex(openForwardRelay);
+					}
 				}
 				sterlogger.getLogger().info("HTTP4!");
 			}

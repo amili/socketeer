@@ -3,6 +3,8 @@ import java.io.IOException;
 
 import javax.security.auth.login.LoginException;
 
+import socketeer.genericTunnel.genericTunnel;
+
 import net.ser1.stomp.Client;
 import net.ser1.stomp.Server;
 
@@ -35,6 +37,14 @@ import net.ser1.stomp.Server;
 
 public class socketeer {
 
+	/*
+	 * TODO: generic stream tunneling
+	 */
+	public void setTunnel() {
+		genericTunnel gt = new genericTunnel();
+		gt.setStreamsFromConsole();
+	}
+	
 	/**
 	 * @param args
 	 */
