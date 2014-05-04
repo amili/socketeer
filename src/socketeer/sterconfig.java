@@ -387,7 +387,6 @@ public class sterconfig {
 	}
 	
 	int getServerPort(String profile) {
-		sterlogger.getLogger().info("P="+profile);
 		return Integer.parseInt(p.getProperty("socketeer.sourcesink."+profile+".serverport"));
 	}
 	
@@ -586,6 +585,39 @@ public class sterconfig {
 			cns[i] = p.getProperty("socketeer.channel."+profiles[i]+".classname");
 		}
 		return cns;
+	}
+	
+	public boolean useConsoleInsteadSocket(String profile) {
+		String sc = p.getProperty("socketeer.sourcesink."+profile+".useconsole");
+		if (sc == null) return false;
+		if (sc.equalsIgnoreCase("true")) {
+			return true;
+		}
+		return false;
+	}
+	
+	public boolean disableConsole() {
+		String nc = p.getProperty("socketeer.general.noconsole");
+		if (nc == null) return false;
+		if (nc.equalsIgnoreCase("true")) {
+			return true;
+		}
+		return false;
+	}
+	
+	public String getFixedSteamClass(String profile) {
+		String sc = p.getProperty("socketeer.sourcesink."+profile+".fixedStreamClass");
+		return sc;
+	}
+	
+	public Properties getFixedStreamClassProperties(String profile) {
+		Properties fscp = new Properties();
+		String[] pn = getProfileNames("socketeer.sourcesink."+profile+".streamClassProperties.");
+		for (int i=0;i<pn.length;i++) {
+			String fcp = p.getProperty("socketeer.sourcesink."+profile+".streamClassProperties."+pn[i]+".");			
+			fscp.setProperty(pn[i], fcp);
+		}
+		return fscp;
 	}
 	
 	void setTemporaryProperty(String key, String value) {

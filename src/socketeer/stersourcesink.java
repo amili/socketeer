@@ -1,13 +1,17 @@
 package socketeer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.security.auth.login.LoginException;
 
 import socketeer.plugins.connection.sterplugin;
+import socketeer.plugins.genericStream.genericStream;
+import socketeer.plugins.genericStream.gsLoader;
 
 import net.ser1.stomp.Client;
 import net.ser1.stomp.Listener;
@@ -35,11 +39,13 @@ public class stersourcesink implements Runnable {
 	
 	sterplugin plugin = null;
 	
+	gsLoader gsl = new gsLoader();
+	
 	void setClusterID(String clusterID) {
 		this.clusterID = clusterID;
 	}
 	
-	String getClusterID() {
+	public String getClusterID() {
 		return clusterID;
 	}
 	
@@ -47,11 +53,11 @@ public class stersourcesink implements Runnable {
 		this.nodeID = nodeID;
 	}
 	
-	String getNodeID() {
+	public String getNodeID() {
 		return nodeID;
 	}
 	
-	String getResourceID() {
+	public String getResourceID() {
 		return resourceID;
 	}
 	
@@ -69,6 +75,10 @@ public class stersourcesink implements Runnable {
 	
 	String getProfile() {
 		return profile;
+	}
+	
+	gsLoader getGenericStreamInterface() {
+		return gsl;
 	}
 	
 	Client cli = null;
@@ -139,10 +149,10 @@ public class stersourcesink implements Runnable {
 	}
 	
 	boolean init (String channel,
-			Socket s,
+			genericStream s,
 			sterconfig conf, String profile,
 			Client cli) {
-
+		
 		this.cli = cli;
 		this.conf = conf;
 		this.profile = profile;
@@ -173,7 +183,11 @@ public class stersourcesink implements Runnable {
 		
 		sterlogger.getLogger().info("sink not source (0):"+isSinkInsteadSource+" "+s+ "cli:"+cli);
 
-		sourceTCPsock = s;
+		if (s!= null) {
+			if (s.isSocket() == true) {
+				sourceTCPsock = s.getSocketRef();
+			}
+		}
 		if (s == null) {isSinkInsteadSource = true;}
 
 		sterlogger.getLogger().info("sink not source:"+isSinkInsteadSource);
@@ -183,13 +197,15 @@ public class stersourcesink implements Runnable {
 		if (isSinkInsteadSource == false) { // source
 
 			// check accesslist
-			if (
-					(conf.isAccessListAuthorised(profile, s.getInetAddress().getHostAddress()) == false) &&
-					(conf.isAccessListAuthorised(profile, s.getInetAddress().getHostName()) == false)
-					){
-				return false;
+			if (s.isSocket() == true) {
+				if (
+						(conf.isAccessListAuthorised(profile, s.getSocketRef().getInetAddress().getHostAddress()) == false) &&
+						(conf.isAccessListAuthorised(profile, s.getSocketRef().getInetAddress().getHostName()) == false)
+						){
+					return false;
+				}	
 			}
-
+			
 			// init connection parameters
 			String targethost = conf.getFixedHost(profile);
 			int targetport = conf.getFixedPort(profile);
@@ -199,7 +215,7 @@ public class stersourcesink implements Runnable {
 			sterproxy sp = new sterproxy();
 			if (targethost == null) {
 				// start socks resolve, which result is host,port and type
-				try {
+				//try {
 					boolean proxysucess = sp.initProxy(s.getInputStream(), s.getOutputStream(), conf, profile);
 					if (proxysucess == false) {
 						return false;
@@ -208,9 +224,9 @@ public class stersourcesink implements Runnable {
 					targetport = sp.getPort();
 					targettype = sp.getType();
 					sterlogger.getLogger().info("((((((((((((((hpt:"+targethost + ","+targetport+","+targettype);
-				} catch (IOException e) {
+				/*} catch (IOException e) {
 					e.printStackTrace();
-				}
+				}*/
 			}
 
 			if (targettype != sterconst.SOCKET_TYPE_UDP) {	
@@ -262,7 +278,13 @@ public class stersourcesink implements Runnable {
 				// connect backwards
 				sterrelaythread bst = sterpool.relayfactory(getThisOne());
 				try {
-					bst.initTCP(getSourceTCPsock().getInputStream(),
+					InputStream is = null;
+					if (getSourceTCPsock() == null) {
+						is = System.in;
+					} else {
+						is = getSourceTCPsock().getInputStream();
+					}
+					bst.initTCP(is,
 							stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
 							stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
 							getConfig(),profile);
@@ -278,18 +300,24 @@ public class stersourcesink implements Runnable {
 				// TODO: some kind of remote UDP assotiation initing
 				
 				// connect backwards
-				sterUDPrelay udr = new sterUDPrelay();
+				/*sterUDPrelay udr = new sterUDPrelay();
 				udr.init(targethost, targetport,
 						s.getLocalSocketAddress().toString() , s.getLocalPort(),
 						getThisOne(),
 						resourceID,
 						isSinkInsteadSource);
 				Thread udpt = new Thread(udr);
-				udpt.start();
+				udpt.start();*/
 				
 			}
 		} else {	// sink
-			// nothing (for now)
+			// TODO: generic stream plugin handling
+			sterlogger.getLogger().info("generic plugin ["+profile+","+conf.getFixedSteamClass(profile)+"]:");
+			if (conf.getFixedSteamClass(profile) != null) {
+				sterlogger.getLogger().info("generic plugin:"+conf.getFixedSteamClass(profile));
+				gsl.init(conf.getFixedSteamClass(profile));
+				gsl.setParameters(conf.getFixedStreamClassProperties(profile));
+			}
 		}
 		return true;
 	}
@@ -379,7 +407,12 @@ public class stersourcesink implements Runnable {
 						sterlogger.getLogger().info("Source sending socket is!"+sms);
 						try {
 							sterlogger.getLogger().info("Sourcesent!0"+sm.getFromNode());
-							OutputStream os = sms.getOutputStream();
+							OutputStream os;
+							if (sms == null) {
+								os = System.out;
+							} else {
+								os = sms.getOutputStream();	
+							}
 							sterlogger.getLogger().info("Sourcesent!1="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
 							/*os.write(
 									Integer.parseInt(sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""), 16)
@@ -393,7 +426,9 @@ public class stersourcesink implements Runnable {
 					}
 					else if ( sm.getCommandNameConstant() == sterconst.MESSAGE_CLOSE) {
 						try {
-							getSourceTCPsock().close();
+							if (getSourceTCPsock() != null) {
+								getSourceTCPsock().close();	
+							}
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -495,45 +530,62 @@ public class stersourcesink implements Runnable {
 						else if (sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"").equals(sterconst.SOCKET_TYPE_UDP+"")) {
 							// TODO
 						}
+						else if (sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"").equals(sterconst.SOCKET_TYPE_GENERICSTREAM+"")) {
+							if (getGenericStreamInterface() != null) {
+								// TODO
+							}
+						}
 						else {
 							// TODO
 						}
 					}
 					else if ( sm.getCommandNameConstant() == sterconst.MESSAGE_SEND) {
 						String resource = sm.getToResourceID();
-						sterlogger.getLogger().info("send message!"+resource+","+sm.getToCluster()+","+sm.getToNode());
-						Socket ms = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(sm.getToCluster(), sm.getToNode(), resource ) );
-						if (ms == null) {
-							// TODO: error handling by message
-							setSinkCloseMessageToHostBecauseOfError(sm);
-						}
-						sterlogger.getLogger().info("sending socket is!"+ms);
-						try {
-							sterlogger.getLogger().info("sent!0");
-							OutputStream os = ms.getOutputStream();
-							sterlogger.getLogger().info("sent!1="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
-							/*os.write(
-									Integer.parseInt(sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""), 16)
-									);*/
+						sterlogger.getLogger().info("gsl for profile:"+profile+","+getGenericStreamInterface());
+						if ((getGenericStreamInterface() != null) && (getGenericStreamInterface().getDynamicClassName() != null) ) { // TODO better
+							sterlogger.getLogger().info("send message ["+getGenericStreamInterface()+"]!"+resource+","+sm.getToCluster()+","+sm.getToNode());
+							OutputStream os = getGenericStreamInterface().getOutputStream();
 							writeHexToOutputStream(os, sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
-							sterlogger.getLogger().info("sent!="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
-						} catch (IOException e) {
-							e.printStackTrace();
+							sterlogger.getLogger().info("sent"+getGenericStreamInterface()+"!="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
+						} else {
+							sterlogger.getLogger().info("send message!"+resource+","+sm.getToCluster()+","+sm.getToNode());
+							Socket ms = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(sm.getToCluster(), sm.getToNode(), resource ) );
+							if (ms == null) {
+								// TODO: error handling by message
+								setSinkCloseMessageToHostBecauseOfError(sm);
+							}
+							sterlogger.getLogger().info("sending socket is!"+ms);
+							try {
+								sterlogger.getLogger().info("sent!0");
+								OutputStream os = ms.getOutputStream();
+								sterlogger.getLogger().info("sent!1="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
+								/*os.write(
+										Integer.parseInt(sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""), 16)
+										);*/
+								writeHexToOutputStream(os, sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
+								sterlogger.getLogger().info("sent!="+sm.getCommandParameter(sterconst.MESSAGE_SEND_PAYLOAD+""));
+							} catch (IOException e) {
+								e.printStackTrace();
+							}	
 						}
 					}
 					else if ( sm.getCommandNameConstant() == sterconst.MESSAGE_CLOSE) {
-						String resource = sm.getToResourceID();
-						Socket s = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ) );
-						if (s == null) {
-							// TODO: error handling by message
-							setSinkCloseMessageToHostBecauseOfError(sm);
-						}
-						try {
-							if (s != null) {s.close();}
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						sterpool.nullifySocketByName(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+						if (getGenericStreamInterface() != null) {
+							// TODO
+						} else {
+							String resource = sm.getToResourceID();
+							Socket s = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ) );
+							if (s == null) {
+								// TODO: error handling by message
+								setSinkCloseMessageToHostBecauseOfError(sm);
+							}
+							try {
+								if (s != null) {s.close();}
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+							sterpool.nullifySocketByName(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));				
+						}				
 					}
 					else {
 						// unknown

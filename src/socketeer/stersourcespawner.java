@@ -3,6 +3,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import socketeer.plugins.genericStream.genericStream;
+
 import net.ser1.stomp.Client;
 
 /**
@@ -22,6 +24,12 @@ public class stersourcespawner implements Runnable {
 	String profile = null;
 	Client cli = null;
 	
+	boolean isConsoleInsteadSocket = false;
+	
+	void isConsoleInsteadSocket (boolean isConsoleInsteadSocket) {
+		this.isConsoleInsteadSocket = isConsoleInsteadSocket;
+	}
+	
 	void setPort(int port) {
 		this.port = port;
 	}
@@ -37,15 +45,24 @@ public class stersourcespawner implements Runnable {
 	
 	void startIt() {
 		try {
-			ServerSocket source = new ServerSocket(port);
-			boolean looping = true;
-			while (looping == true) {
-				Socket spawned = source.accept();
-				sterlogger.getLogger().info("spawned:"+spawned);
-				stersourcesink sosi = sterpool.sourcesinkfactory();
-				if (sosi.init(channel, spawned, conf, profile, cli) == false) {
-					spawned.close();
+			genericStream gt = new genericStream();
+			stersourcesink sosi = sterpool.sourcesinkfactory();
+			if (isConsoleInsteadSocket == true) {
+				gt.setStreamsFromConsole();
+				if (sosi.init(channel, gt, conf, profile, cli) == false) {
+					// todo: something in error case
 				}
+			} else {
+				ServerSocket source = new ServerSocket(port);
+				boolean looping = true;
+				while (looping == true) {
+					Socket spawned = source.accept();
+					sterlogger.getLogger().info("spawned:"+spawned);
+					gt.setStreamsFromSocket(spawned);
+					if (sosi.init(channel, gt, conf, profile, cli) == false) {
+						spawned.close();
+					}
+				}	
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

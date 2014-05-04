@@ -2,6 +2,12 @@ package socketeer.plugins.connection;
 
 // component from: https://github.com/eriksson/smack-bosh
 
+// TODO: http://www.igniterealtime.org/builds/smack/docs/latest/documentation/extensions/muc.html
+// full MUC support and/or PubSub support
+
+// smackx 3.2.2. extracted from:
+//     http://code.google.com/p/openhab/source/browse/bundles/io/org.openhab.io.net/lib/smackx-3.2.2.jar?r=4279588f9cfdcf08b2f6530130612154a97aa04a
+
 import org.jivesoftware.smack.BOSHConfiguration;
 import org.jivesoftware.smack.BOSHConnection;
 import org.jivesoftware.smack.Chat;
@@ -12,6 +18,7 @@ import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smackx.muc.MultiUserChat;
 
 import socketeer.sterconfig;
 import socketeer.stersourcesink;
@@ -20,6 +27,7 @@ public class sterchannelXMPP extends sterchannel {
 
 	ChatManager chatManager;
 	MessageListener messageListener;
+	MultiUserChat muc;
 	
 	public boolean setConfigProfileSourceSink(stersourcesink sosi, sterconfig conf, String profile) {
 	
@@ -51,7 +59,15 @@ public class sterchannelXMPP extends sterchannel {
 					);
 			chatManager = connection.getChatManager();
 			messageListener = new MyMessageListener();
-			
+			if (conf.getChannelParameterByKey(profile, "conferenceroom") != null) {
+				muc = new MultiUserChat(connection, conf.getChannelParameterByKey(profile, "conferenceroom"));
+			    if (conf.getChannelParameterByKey(profile, "joinpassword") == null) {
+			    	muc.join(conf.getChannelParameterByKey(profile, "joinnick"));	
+			    } else {
+			    	muc.join(conf.getChannelParameterByKey(profile, "joinnick"),conf.getChannelParameterByKey(profile, "joinpassword"));
+			    }
+			}
+
 		} catch (XMPPException e) {
 			e.printStackTrace();
 			return false;

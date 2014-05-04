@@ -11,6 +11,9 @@ public class sterconst {
 	public static int SOCKET_TYPE_CONNECTION = 0;
 	public static int SOCKET_TYPE_BIND = 1;
 	public static int SOCKET_TYPE_UDP = 2;
+
+	// Generic stream
+	public static int SOCKET_TYPE_GENERICSTREAM = 3;
 	
 	// Sourcesink types
 	public static int SOURCESINK_TYPE_SOURCE = 1;

@@ -1,9 +1,11 @@
 package socketeer;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 import javax.security.auth.login.LoginException;
 
-import socketeer.genericTunnel.genericTunnel;
+import socketeer.plugins.genericStream.genericStream;
 
 import net.ser1.stomp.Client;
 import net.ser1.stomp.Server;
@@ -35,14 +37,42 @@ import net.ser1.stomp.Server;
  * 
  */
 
-public class socketeer {
-
-	/*
-	 * TODO: generic stream tunneling
+public class socketeer {	
+	
+	/**
+	 *  console initialisation 
 	 */
-	public void setTunnel() {
-		genericTunnel gt = new genericTunnel();
-		gt.setStreamsFromConsole();
+	static public void initConsole() {
+		System.out.println("Socketeer alpha:");
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		try {
+			String rad  = "";
+			while (rad != null) {
+				rad  = br.readLine();
+				System.out.println("you typed:"+rad);
+				System.out.println("");
+				if (rad.startsWith("LIST")) {
+					if (rad.startsWith("LIST PLUGINS")) {
+						sterpool.debugPlugins();
+					}
+					else if (rad.startsWith("LIST SOURCESINKS")) {
+						sterpool.debugSourceSink();
+					}
+					else if (rad.startsWith("LIST RELAYS")) {
+						sterpool.debugRelayThread();
+					}
+					else if (rad.startsWith("LIST SOCKETS")) {
+						sterpool.debugSockets();
+					}
+				} else if (rad.startsWith("EXIT")) {
+					System.exit(0);
+				} else {
+					
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -99,14 +129,23 @@ public class socketeer {
 		for (int i=0;i<pns.length;i++) { // sources
 			if (c.isSpanningAndResolvingSink(pns[i]) == false) {
 				stersourcespawner spawn = new stersourcespawner();
-				spawn.setPort(c.getServerPort(pns[i]));
-				spawn.setData(c.getChannel(pns[i]),
-						  c, pns[i], null);
+				
+				if (c.useConsoleInsteadSocket(pns[i]) == true) {
+					spawn.isConsoleInsteadSocket(true);
+					spawn.setData(c.getChannel(pns[i]),
+							  c, pns[i], null);
+				} else {
+					spawn.setPort(c.getServerPort(pns[i]));
+					spawn.setData(c.getChannel(pns[i]),
+							  c, pns[i], null);	
+				}
+				
 				Thread t = new Thread(spawn);
 				t.start();
+
 			}
 		}
-
+		if (c.disableConsole() != true) {initConsole();}
 	}
 
 }
