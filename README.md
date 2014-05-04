@@ -32,12 +32,16 @@ Java has the also the excellent jgroups library (which natevily supports STOMP f
 The final idea is to support one day also Apache Camel (via a plugin), which would make many more interconnecting possibilities a breeze.
 
 Protocol support
----------------
+----------------
 Has frontends:
 - fixed redirection to a host/port, specified in the configuration
 - SOCKS4(a)/SOCKS5
 - HTTP HEAD, GET, POST and CONNECT method (to be used also as HTTP(s) proxy)
 - content based redirection (modelled after another project "sf-rmr")
+
+Licence
+-------
+MIT licence.
 
 GUI
 ---
