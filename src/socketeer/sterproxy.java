@@ -470,6 +470,7 @@ public class sterproxy {
 				BufferedReader br = new BufferedReader(new InputStreamReader(is));
 				String line = br.readLine();
 				String firstline = new String(line);
+				String linetorecompose = new String();
 				sterlogger.getLogger().info("HTTP1!"+line);
 				String httpver = "";
 				if ( ( (one == 'C') && (line.substring(0, 5).equals("ONNECT") ) == false)) {
@@ -496,6 +497,7 @@ public class sterproxy {
 						( (one == 'P') && (line.substring(0, 2).equals("OST") ) == false)
 						) {
 					sterlogger.getLogger().info("isget");
+					String httpmeth = line.split(" ")[0];
 					line = line.substring(line.indexOf(" ")+1);
 					line = line.trim();
 					String parts[] = line.split("/");
@@ -511,8 +513,13 @@ public class sterproxy {
 						port = 80;
 					}
 					httpver = "HTTP/"+parts[parts.length-1];
+					String recomposepayload = "";
+					for (int i=3;i<parts.length;i++) {
+						recomposepayload = recomposepayload+"/"+parts[i];	
+					}
+					linetorecompose = (char)one+httpmeth+" "+recomposepayload;
 				}
-				sterlogger.getLogger().info("HTTP2!"+host+","+port);
+				sterlogger.getLogger().info("HTTP2!"+host+","+port+" :"+line);
 				line = br.readLine();
 				Vector headers = new Vector();
 				while (line.equals("") == false) {
@@ -530,13 +537,14 @@ public class sterproxy {
 				} else {
 					if ((one == 'G') || (one == 'H') || (one == 'P') ) {
 						openForwardRelay = ""; // TODO, test sending the headers, when opened
+						openForwardRelay = linetorecompose+'\r'+'\n'; // recompose the request
 						for (int i = 0;i<headers.size();i++) {
-							openForwardRelay = openForwardRelay + (String)headers.get(i)+'\r'+'\n';
+							openForwardRelay = openForwardRelay + (String)headers.get(i)+ '\r'+'\n';
 						}
 						openForwardRelay = ToHex(openForwardRelay);
 					}
 				}
-				sterlogger.getLogger().info("HTTP4!");
+				sterlogger.getLogger().info("HTTP4!"+headers.size());
 			}
 			else {
 				return false;

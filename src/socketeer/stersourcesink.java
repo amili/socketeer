@@ -216,6 +216,7 @@ public class stersourcesink implements Runnable {
 			if (targethost == null) {
 				// start socks resolve, which result is host,port and type
 				//try {
+					sterlogger.getLogger().info("((((((((((((((proxy");
 					boolean proxysucess = sp.initProxy(s.getInputStream(), s.getOutputStream(), conf, profile);
 					if (proxysucess == false) {
 						return false;
@@ -507,6 +508,7 @@ public class stersourcesink implements Runnable {
 								String forwardrelay = sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_FORWARDONRELAY+"");
 								if (forwardrelay != null) {
 									writeHexToOutputStream(rse.getOutputStream(), forwardrelay);
+									sterlogger.getLogger().info("To write forward!");
 								}
 							} catch (IOException e) {
 								e.printStackTrace();
