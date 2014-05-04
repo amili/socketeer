@@ -19,7 +19,7 @@ public class sterchannel implements stergenericcon {
 	}
 	
 	public void send(String destination, String message) {
-		// to be implemented by pluging;
+		// to be implemented by plugin;
 	}
 
 	public String getProtocolID() {

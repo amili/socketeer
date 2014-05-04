@@ -6,7 +6,10 @@ import org.jivesoftware.smack.BOSHConfiguration;
 import org.jivesoftware.smack.BOSHConnection;
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
+import org.jivesoftware.smack.Connection;
+import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.MessageListener;
+import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Message;
 
@@ -20,14 +23,25 @@ public class sterchannelXMPP extends sterchannel {
 	
 	public boolean setConfigProfileSourceSink(stersourcesink sosi, sterconfig conf, String profile) {
 	
-		BOSHConfiguration config = new BOSHConfiguration(false, 
-				conf.getChannelHost(profile),
-				conf.getChannelPort(profile),
-				conf.getChannelParameterByKey(profile, "boshurl"),
-				conf.getChannelParameterByKey(profile, "domain"),
-				conf.getChannelParameterByKey(profile, "xmppurl")
-				);
-		BOSHConnection connection = new BOSHConnection(config);
+		Connection connection;
+		
+		if (conf.getChannelParameterByKey(profile, "boshurl") != null) {
+			BOSHConfiguration config = new BOSHConfiguration(false, 
+					conf.getChannelHost(profile),
+					conf.getChannelPort(profile),
+					conf.getChannelParameterByKey(profile, "boshurl"),
+					conf.getChannelTopic(profile),
+					conf.getChannelParameterByKey(profile, "xmppurl")
+					);
+			connection = new BOSHConnection(config);		
+		} else {
+			ConnectionConfiguration config = new ConnectionConfiguration(
+					conf.getChannelHost(profile),
+					conf.getChannelPort(profile),
+					conf.getChannelTopic(profile));
+			connection = new XMPPConnection(config);
+		}
+		
 		try {
 			connection.connect();
 			connection.login(

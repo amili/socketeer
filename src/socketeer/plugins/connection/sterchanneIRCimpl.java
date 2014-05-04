@@ -2,8 +2,13 @@ package socketeer.plugins.connection;
 import java.io.*;
 import java.net.*;
 
+import socketeer.sterlogger;
+
 public class sterchanneIRCimpl implements Runnable {
 
+	String memhost = null;
+	int memport = 0;
+	
 	Socket socket;
 	String nick;
 	String login;
@@ -24,8 +29,11 @@ public class sterchanneIRCimpl implements Runnable {
 		this.uid = uid;
 	}
 	
-	public boolean conect(String host, int port) {
+	public boolean connect(String host, int port) {
 		try {
+			if (host == null) {host = memhost;}
+			if (memport > 0) {port = memport;}
+			memhost = host; memport = port;
 			socket = new Socket(host, port);
 			writer = new BufferedWriter(
 	                new OutputStreamWriter(socket.getOutputStream( )));
@@ -56,11 +64,37 @@ public class sterchanneIRCimpl implements Runnable {
         return true;
 	}
 	
+	private boolean tryResend(String destination, String message) {
+		try {
+			if ( connect(null,0) == true) {
+				writer.write("PRIVMSG #"+destination+" "+message+'\r'+'\n');
+			} else {
+				return false;
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
+	
 	public void send(String destination, String message) {
 		try {
 			writer.write("PRIVMSG #"+destination+" "+message+'\r'+'\n');
 		} catch (IOException e) {
-			e.printStackTrace();
+				int counter = 0;
+				boolean isLooping = true;
+				while ((counter < 10) && isLooping) {
+					boolean sendsucceeded = tryResend(destination, message);
+					if (sendsucceeded == true) {isLooping = false;}
+					if (isLooping == true) {
+						long beginPause = System.currentTimeMillis();
+						while (System.currentTimeMillis()-beginPause < 3000) {
+							int pausePayload = 10 | 10; // little pausing with dummy payload
+						}
+					}
+				}
+				if (counter >=10) e.printStackTrace();
 		}
 	}
 	
@@ -72,7 +106,6 @@ public class sterchanneIRCimpl implements Runnable {
 			while ((line = reader.readLine( )) != null) {
 			    if (line.toLowerCase( ).startsWith("PING ")) {
 			    	writer.write("PONG " + line.substring(5) + "\r\n");
-			        writer.write("PRIVMSG " + channel + " :I got pinged!\r\n");
 			        writer.flush( );
 			    }
 			    else if (line.toLowerCase( ).startsWith(":")) {
@@ -97,8 +130,7 @@ public class sterchanneIRCimpl implements Runnable {
 			    	}
 			    }
 			    else {
-			        // The raw line from bot
-			        System.out.println(line);
+			        sterlogger.getLogger().info(this.getClass().getCanonicalName()+": Unkown message type from server:"+line);
 			    }
 			}
 		} catch (IOException e) {

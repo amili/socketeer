@@ -15,7 +15,7 @@ public class sterchannelRC extends sterchannel {
 				conf.getChannelTopic(profile),
 				conf.getChannelParameterByKey(profile, "uid")
 				);
-		if (sci.conect("host", 0) == true) {
+		if (sci.connect(conf.getChannelHost(profile), conf.getChannelPort(profile)) == true) {
 			Thread irct = new Thread(sci);
 			irct.start();
 		} else {
