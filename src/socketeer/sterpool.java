@@ -22,7 +22,9 @@ public class sterpool {
 
 		// default sizes
 		static stersourcesink[] sosi = new stersourcesink[10]; // sourcesink pool
-		static sterrelaythread[] rt = new sterrelaythread[10]; // relay pool
+		
+		static sterrelaythread[] rt = new sterrelaythread[100]; // relay pool
+		static String[] rtid = new String[100];					// relay pool identifers
 		
 		static Socket[] soc = new Socket[1000];	// socket pool
 		static String[] socid = new String[1000]; // socket identifier string
@@ -54,6 +56,9 @@ public class sterpool {
 			}
 			for (int i=0;i<rt.length;i++) {
 				rt[i] = null;
+			}
+			for (int i=0;i<rtid.length;i++) {
+				rtid[i] = null;
 			}
 			for (int i=0;i<soc.length;i++) {
 				soc[i] = null;
@@ -94,16 +99,47 @@ public class sterpool {
 			return -1;
 		}
 		
-		static sterrelaythread relayfactory(stersourcesink s) {
+		static sterrelaythread relayfactory(stersourcesink s, String id) {
 			int first = getFreeRelay();
 			if (first < 0) return null;
 			rt[first] = new sterrelaythread();
 			rt[first].setSourceSink(s);
+			rtid[first] = id;
+			sterlogger.getLogger().info("created relay:"+id);// debug
 			return rt[first];
 		}
 		
 		static sterrelaythread getrelay(int i) {
 			return rt[i];
+		}
+		
+		static sterrelaythread getRelay(String id) {
+			sterlogger.getLogger().info("searching relay:"+id);// debug
+			for (int i=0;i<rt.length;i++) {
+				if (rtid[i] != null) {
+					if (rtid[i].equals(id)) {
+						sterlogger.getLogger().info("found relay:"+id);// debug
+						return rt[i];
+					}
+				}
+			}
+			return null;
+		}
+		
+		// TODO
+		static boolean relayrelease(String id) {
+			sterlogger.getLogger().info("searching relay to delete:"+id);// debug
+			for (int i=0;i<rt.length;i++) {
+				if (rtid[i] != null) {
+					if(rtid[i].equals(id)) {
+						rt[i].sheduleForExit();
+						rt[i] = null;
+						rtid[i] = null;
+						sterlogger.getLogger().info("deleted relay: ("+i+") "+id);// debug
+					}	
+				}
+			}
+			return true;
 		}
 
 		static int getFreeSocket() {
@@ -168,11 +204,22 @@ public class sterpool {
 		}
 		
 		static void nullifySocketByName(String socName) {
+			sterlogger.getLogger().info("initing nullifing.");// debug
 			for (int i=0;i<socid.length;i++) {
-				if (socName.equals(socid[i])) {
-					soc[i] = null;
-					socid[i] = null;
-					return;
+				if (soc[i] != null) {
+					sterlogger.getLogger().info("nullifing ("+i+") "+socid[i]);
+					if (socName.equals(socid[i])) {
+						if (soc[i].isClosed() == false) {
+							try {
+								soc[i].close();
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+						soc[i] = null;
+						socid[i] = null;
+						return;
+					}			
 				}
 			}
 		}

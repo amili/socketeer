@@ -108,7 +108,7 @@ public class stersourcesink implements Runnable {
 		return null;
 	}
 	
-	void setSinkCloseMessageToHostBecauseOfError(stermessage tsm) {
+	void sendSinkCloseMessageToHostBecauseOfError(stermessage tsm) {
 		stermessage sm = new stermessage();
 		sm.setCryptography(getConfig().getChannelEncryptionKey(profile), getConfig().getChannelEncryptionIterations(profile));
 		sm.setMessage(-1, 
@@ -127,8 +127,30 @@ public class stersourcesink implements Runnable {
 		sterlogger.getLogger().info("!! close message sent");
 	}
 	
+	void sendSelfCloseMessageToHostBecauseOfError(String to) {
+		stermessage sm = new stermessage();
+		sm.setCryptography(getConfig().getChannelEncryptionKey(profile), getConfig().getChannelEncryptionIterations(profile));
+		sm.setMessage(-1, 
+					stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),getResourceID()),
+					to,
+					sm.getNextSeqID(), sterconst.MESSAGE_CLOSE+"");
+		sm.setCommandNameConstant(sterconst.MESSAGE_CLOSE+"");
+		//sm.setCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+"", resourceid);
+		sterlogger.getLogger().info("!! self error happened to self close."+sm.getAsSerial());
+		channelSend(getConfig().getChannelTopic(profile),
+				sm.getAsEncryptedSerial(
+						conf.getChannelEncryptionKey(profile),
+						conf.getChannelEncryptionIterations(profile)
+						)
+				);
+		sterlogger.getLogger().info("!! self close message sent");
+	}
+	
 	static boolean writeHexToOutputStream(OutputStream os, String hexstring) {
-		sterlogger.getLogger().info("to be written hex!="+hexstring);
+		sterlogger.getLogger().info("to be written hex ("+hexstring.length()+") !="+hexstring);
+		if (hexstring.length() > 2) {
+			sterlogger.getLogger().info("tbwh>");
+		}
 		for (int i=0;i<hexstring.length()/2;i=i+2) {
 			try {
 				os.write(Integer.parseInt(hexstring.substring(i,i+2), 16));
@@ -239,12 +261,13 @@ public class stersourcesink implements Runnable {
 					return false;
 				}
 
-				// TODO: remapping
+				// Remapping
 				String hostport = conf.getRemappingForProfileAsHostPortPair(profile, targethost, targetport);
 				if (hostport != null) {
 					sterlogger.getLogger().info("%%%%% Remapping:"+hostport);
 					targethost = hostport.split(" ")[0];
 					targetport = Integer.parseInt(hostport.split(" ")[1]);
+					sterlogger.getLogger().info("%%%%% Remapped to:"+profile+","+targethost+","+targetport);
 				}
 
 				// init the communication by sending message
@@ -267,7 +290,7 @@ public class stersourcesink implements Runnable {
 				sterlogger.getLogger().info("message is:"+sm.getAsSerial());
 
 				// test
-				sterlogger.getLogger().info("init message passed with command :"+sm.getCommandNameConstant()+" for profile:"+getConfig().getChannelTopic(profile)+ "for cli:"+cli);
+				sterlogger.getLogger().info("init message passed with command :"+sm.getCommandNameConstant()+" for profile:"+getConfig().getChannelTopic(profile)+ " for cli:"+cli);
 				//cli.send(getConfig().getChannelTopic(profile), sm.getAsSerial());
 				channelSend(getConfig().getChannelTopic(profile),
 						sm.getAsEncryptedSerial(
@@ -277,7 +300,7 @@ public class stersourcesink implements Runnable {
 						);
 				
 				// connect backwards
-				sterrelaythread bst = sterpool.relayfactory(getThisOne());
+				sterrelaythread bst = sterpool.relayfactory(getThisOne(),"bc"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID));
 				try {
 					InputStream is = null;
 					if (getSourceTCPsock() == null) {
@@ -288,7 +311,7 @@ public class stersourcesink implements Runnable {
 					bst.initTCP(is,
 							stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
 							stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
-							getConfig(),profile);
+							getConfig(),profile,resourceID);
 					new Thread(bst).start();
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -485,12 +508,12 @@ public class stersourcesink implements Runnable {
 									" "+sterpool.getSocketByName(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource )));
 							if (rse == null) {
 								// TODO: create an error and return it!
-								setSinkCloseMessageToHostBecauseOfError(sm);
+								sendSinkCloseMessageToHostBecauseOfError(sm);
 							}
-							sterrelaythread st = sterpool.relayfactory(getThisOne());
+							sterrelaythread st = sterpool.relayfactory(getThisOne(),"si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
 							if (st == null) {
 								// TODO: error handling by message
-								setSinkCloseMessageToHostBecauseOfError(sm);
+								sendSinkCloseMessageToHostBecauseOfError(sm);
 							}
 							try {
 								st.initTCP(rse.getInputStream(),
@@ -502,12 +525,22 @@ public class stersourcesink implements Runnable {
 												sm.getFromCluster(),
 												sm.getFromNode(),
 												sm.getFromResourceID() ),
-												getConfig(), getProfile()
+												getConfig(), getProfile(), resource
 												);
 								new Thread(st).start();
 								String forwardrelay = sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_FORWARDONRELAY+"");
 								if (forwardrelay != null) {
+									try {
+										rse.getOutputStream().flush();
+									} catch (IOException e1) {
+										e1.printStackTrace();
+									}
 									writeHexToOutputStream(rse.getOutputStream(), forwardrelay);
+									try {
+										rse.getOutputStream().flush();
+									} catch (IOException e1) {
+										e1.printStackTrace();
+									}
 									sterlogger.getLogger().info("To write forward!");
 								}
 							} catch (IOException e) {
@@ -533,7 +566,7 @@ public class stersourcesink implements Runnable {
 							// TODO
 						}
 						else if (sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"").equals(sterconst.SOCKET_TYPE_GENERICSTREAM+"")) {
-							if (getGenericStreamInterface() != null) {
+							if ((getGenericStreamInterface() != null) && getGenericStreamInterface().getDynamicClassName() != null) {
 								// TODO
 							}
 						}
@@ -554,7 +587,7 @@ public class stersourcesink implements Runnable {
 							Socket ms = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(sm.getToCluster(), sm.getToNode(), resource ) );
 							if (ms == null) {
 								// TODO: error handling by message
-								setSinkCloseMessageToHostBecauseOfError(sm);
+								sendSinkCloseMessageToHostBecauseOfError(sm);
 							}
 							sterlogger.getLogger().info("sending socket is!"+ms);
 							try {
@@ -572,24 +605,36 @@ public class stersourcesink implements Runnable {
 						}
 					}
 					else if ( sm.getCommandNameConstant() == sterconst.MESSAGE_CLOSE) {
-						if (getGenericStreamInterface() != null) {
-							// TODO
+						sterlogger.getLogger().info("!!!Socket close message!!!"); //debug
+						if ((getGenericStreamInterface() != null)  && (getGenericStreamInterface().getDynamicClassName() != null)) {
+							sterlogger.getLogger().info("!!!Generic stream message:"+getGenericStreamInterface());
 						} else {
 							String resource = sm.getToResourceID();
 							Socket s = sterpool.getSocketByName( stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ) );
+							sterlogger.getLogger().info("!!!Socket close message is!!!"+s); //debug
 							if (s == null) {
 								// TODO: error handling by message
-								setSinkCloseMessageToHostBecauseOfError(sm);
+								sendSinkCloseMessageToHostBecauseOfError(sm);
 							}
 							try {
-								if (s != null) {s.close();}
+								if (s != null) {s.close();
+								sterlogger.getLogger().info("!!!Socket closed!!!"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));}
 							} catch (IOException e) {
 								e.printStackTrace();
 							}
-							sterpool.nullifySocketByName(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));				
+							sterpool.nullifySocketByName(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							sterlogger.getLogger().info("!!!Socket nullified!!!"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+					
+							// TODO: better release
+							sterrelaythread st = sterpool.getRelay("bc"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							if (st != null) { st.sheduleForExit(); }
+							st = sterpool.getRelay("si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							if (st != null) { st.sheduleForExit(); }
+							sterpool.relayrelease("bc"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							sterpool.relayrelease("si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							
 						}				
-					}
-					else {
+					} else {
 						// unknown
 					}
 				}

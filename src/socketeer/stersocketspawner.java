@@ -40,7 +40,7 @@ public class stersocketspawner implements Runnable {
 			if (bs == null) {
 				// TODO: error handling by message
 			}
-			sterrelaythread st = sterpool.relayfactory(sosi);
+			sterrelaythread st = sterpool.relayfactory(sosi,"sp"+stermessage.joinClusterNodeSubnode(sosi.getClusterID(), sosi.getNodeID(), sm.getToResourceID() ));
 			if (st == null) {
 				// TODO: error handling by message
 			}
@@ -55,7 +55,7 @@ public class stersocketspawner implements Runnable {
 								sm.getFromCluster(),
 								sm.getFromNode(),
 								sm.getFromResourceID() ),
-								sosi.getConfig(), sosi.getProfile()
+								sosi.getConfig(), sosi.getProfile(), null
 								);
 				new Thread(st).start();
 			} catch (IOException e) {

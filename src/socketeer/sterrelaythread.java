@@ -28,13 +28,24 @@ public class sterrelaythread implements Runnable {
 	sterconfig conf;
 	String profile;
 	
-	void initTCP(InputStream is,String from, String to, sterconfig conf, String profile) {
+	// execution control
+	boolean sheduledForExit = false;
+	
+	// Resource id
+	String resourceid = null;
+	
+	void sheduleForExit() {
+		sheduledForExit = true;
+	}
+	
+	void initTCP(InputStream is,String from, String to, sterconfig conf, String profile, String resourceID) {
 		this.is = is;
 		this.from = from;
 		this.to = to;
 		//this.cli = cli;
 		this.conf = conf;
 		this.profile = profile;
+		this.resourceid = resourceID;
 	}
 	
 	void setSourceSink(stersourcesink sosi) {
@@ -61,6 +72,7 @@ public class sterrelaythread implements Runnable {
 			c = is.read();
 			sterlogger.getLogger().info("$$$$ starting:"+getFrom()+","+getTo()+","+profile+","+conf.getChannelTopic(profile)+","+c);
 			while (c > -1) {
+				if (sheduledForExit == true) {return;}
 				// create a message with from, to and the data
 				sm.setMessage(-1, from, to, stermessage.getNextSeqID(), sterconst.MESSAGE_SEND+"");
 				sm.setCommandNameConstant(sterconst.MESSAGE_SEND+"");
@@ -73,17 +85,24 @@ public class sterrelaythread implements Runnable {
 						sm.getAsEncryptedSerial(conf.getChannelEncryptionKey(profile),
 						conf.getChannelEncryptionIterations(profile)));
 				sterpool.debugRelayThread();
+				if (sheduledForExit == true) {return;}
 				c = is.read();	
 			}
 			sterlogger.getLogger().info("$$$$ closing relay"+getFrom()+","+getTo()+","+profile+","+conf.getChannelTopic(profile));
 		} catch (IOException e) {
 			sterlogger.getLogger().info("$$$$ error:"+getFrom()+","+getTo()+","+profile+","+conf.getChannelTopic(profile)+","+e);			
 			e.printStackTrace();
+			if (sosiref != null) {
+				if (resourceid != null) {
+					sterlogger.getLogger().info("sending error to:"+getTo());
+					sosiref.sendSelfCloseMessageToHostBecauseOfError(getTo());
+				}
+			}
 		}
 		sm.setMessage(-1, from, to, stermessage.getNextSeqID(), sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandNameConstant(sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+"",from);
-		sterlogger.getLogger().info("socket closed:"+sm.getCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+""));
+		sterlogger.getLogger().info("socket closed:"+sm.getAsSerial());
 		//cli.send(conf.getChannelTopic(profile), sm.getAsSerial());
 		sosiref.channelSend(conf.getChannelTopic(profile),
 				sm.getAsEncryptedSerial(
@@ -94,7 +113,7 @@ public class sterrelaythread implements Runnable {
 	}
 	
 	void setUDPinsteadTCP() {
-		;
+		// todo;
 	}
 	
 	void initUDP() {

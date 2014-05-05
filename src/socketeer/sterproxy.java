@@ -530,9 +530,8 @@ public class sterproxy {
 				sterlogger.getLogger().info("HTTP3!"+line+ ","+ httpver);
 				BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
 				if (one == 'C') {
-					bw.write(httpver+" 200 Connection established"+'\n');
-					bw.write("Proxy-agent: Socketeer/1.1"+'\n');
-					bw.write(""+'\n');
+					bw.write(httpver+" 200 Connection established"+'\r'+'\n');
+					bw.write("Proxy-agent: Socketeer/1.1"+'\r'+'\n');
 					bw.flush();	
 				} else {
 					if ((one == 'G') || (one == 'H') || (one == 'P') ) {
@@ -541,6 +540,7 @@ public class sterproxy {
 						for (int i = 0;i<headers.size();i++) {
 							openForwardRelay = openForwardRelay + (String)headers.get(i)+ '\r'+'\n';
 						}
+						//openForwardRelay = openForwardRelay + '\r'+'\n';
 						openForwardRelay = ToHex(openForwardRelay);
 					}
 				}
