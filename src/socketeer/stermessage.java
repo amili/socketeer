@@ -289,6 +289,8 @@ public class stermessage {
 			int  n = rand.nextInt(99) + 0;
 			r = r + Integer.toHexString(n);
 		}
+		r = r + Long.toHexString(System.currentTimeMillis()).toUpperCase();
+		//r = r + System.currentTimeMillis();
 		return r;
 	}
 	

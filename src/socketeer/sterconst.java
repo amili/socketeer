@@ -40,7 +40,7 @@ public class sterconst {
 	public static int MESSAGE_OPEN_PARAMETER_PORT = 2;
 	public static int MESSAGE_OPEN_PARAMETER_TYPE = 3;
 	public static int MESSAGE_OPEN_PARAMETER_SECONDREPLY=4;
-	public static int MESSAGE_OPEN_PARAMETER_FORWARDONRELAY=4;
+	public static int MESSAGE_OPEN_PARAMETER_FORWARDONRELAY=5;
 	public static int MESSAGE_CLOSE_RESOURCE = 5;
 	public static int MESSAGE_SEND_PAYLOAD = 6;
 	public static int MESSAGE_ERROR_CODE = 7;
@@ -54,6 +54,7 @@ public class sterconst {
 	public static int MESSAGE_RESOLVE_TYPE_V4=1;
 	public static int MESSAGE_RESOLVE_TYPE_V6=2;
 	
-	// Socket second bynd reply
+	// groupid
+	public static int MESSAGE_PARAMETER_GROUPID=100;
 	
 }

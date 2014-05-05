@@ -31,21 +31,21 @@ public class sterrelaythread implements Runnable {
 	// execution control
 	boolean sheduledForExit = false;
 	
-	// Resource id
-	String resourceid = null;
+	// TODO: group id, used for destroying
+	String groupid = null;
 	
 	void sheduleForExit() {
 		sheduledForExit = true;
 	}
 	
-	void initTCP(InputStream is,String from, String to, sterconfig conf, String profile, String resourceID) {
+	void initTCP(InputStream is,String from, String to, sterconfig conf, String profile, String groupID) {
 		this.is = is;
 		this.from = from;
 		this.to = to;
 		//this.cli = cli;
 		this.conf = conf;
 		this.profile = profile;
-		this.resourceid = resourceID;
+		this.groupid = groupID;
 	}
 	
 	void setSourceSink(stersourcesink sosi) {
@@ -62,6 +62,10 @@ public class sterrelaythread implements Runnable {
 	
 	String getTo() {
 		return to;
+	}
+	
+	String getGroupID() {
+		return groupid;
 	}
 	
 	void startTCPrelay() {
@@ -93,15 +97,16 @@ public class sterrelaythread implements Runnable {
 			sterlogger.getLogger().info("$$$$ error:"+getFrom()+","+getTo()+","+profile+","+conf.getChannelTopic(profile)+","+e);			
 			e.printStackTrace();
 			if (sosiref != null) {
-				if (resourceid != null) {
-					sterlogger.getLogger().info("sending error to:"+getTo());
-					sosiref.sendSelfCloseMessageToHostBecauseOfError(getTo());
+				if (getTo() != null) {
+					sterlogger.getLogger().info("sending error to:"+getTo()+","+getGroupID());
+					sosiref.sendSelfCloseMessageToHostBecauseOfError(getTo(),getGroupID());
 				}
 			}
 		}
 		sm.setMessage(-1, from, to, stermessage.getNextSeqID(), sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandNameConstant(sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+"",from);
+		sm.setCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"",getGroupID());
 		sterlogger.getLogger().info("socket closed:"+sm.getAsSerial());
 		//cli.send(conf.getChannelTopic(profile), sm.getAsSerial());
 		sosiref.channelSend(conf.getChannelTopic(profile),

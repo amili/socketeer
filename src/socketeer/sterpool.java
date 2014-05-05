@@ -141,6 +141,23 @@ public class sterpool {
 			}
 			return true;
 		}
+		
+		// TODO
+		static boolean relayreleasebygroup(String gid) {
+			sterlogger.getLogger().info("searching relay group to delete:"+gid);// debug
+			for (int i=0;i<rt.length;i++) {
+				if (rt[i] != null) {
+					sterlogger.getLogger().info("check delete value:"+rt[i].getGroupID());// debug
+					if(rt[i].getGroupID().equals(gid)) {
+						rt[i].sheduleForExit();
+						rt[i] = null;
+						rtid[i] = null;
+						sterlogger.getLogger().info("deleted relay: ("+i+") "+gid);// debug
+					}	
+				}
+			}
+			return true;
+		}
 
 		static int getFreeSocket() {
 			for (int i=0;i<soc.length;i++) {
@@ -312,12 +329,13 @@ public class sterpool {
 		}
 		
 		static void debugRelayThread() {
-			sterlogger.getLogger().info("RelayThread debug----");
+			sterlogger.getLogger().info("RelayThread debug ----");
 			for (int i=0;i<rt.length;i++) {
 				if (rt[i] != null) {
-					sterlogger.getLogger().info("RelayThread ["+i+"]="+rt[i].getFrom()+" "+rt[i].getTo());
+					sterlogger.getLogger().info("RelayThread ["+i+"]="+rt[i].getFrom()+" "+rt[i].getTo()+" "+rt[i].getGroupID());
 				}
 			}
+			sterlogger.getLogger().info("RelayThread debug end ----");
 		}
 		
 		static void debugSockets() {

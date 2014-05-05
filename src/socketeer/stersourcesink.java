@@ -127,7 +127,7 @@ public class stersourcesink implements Runnable {
 		sterlogger.getLogger().info("!! close message sent");
 	}
 	
-	void sendSelfCloseMessageToHostBecauseOfError(String to) {
+	void sendSelfCloseMessageToHostBecauseOfError(String to, String groupid) {
 		stermessage sm = new stermessage();
 		sm.setCryptography(getConfig().getChannelEncryptionKey(profile), getConfig().getChannelEncryptionIterations(profile));
 		sm.setMessage(-1, 
@@ -136,6 +136,9 @@ public class stersourcesink implements Runnable {
 					sm.getNextSeqID(), sterconst.MESSAGE_CLOSE+"");
 		sm.setCommandNameConstant(sterconst.MESSAGE_CLOSE+"");
 		//sm.setCommandParameter(sterconst.MESSAGE_CLOSE_RESOURCE+"", resourceid);
+		if (groupid != null) {
+			sm.setCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"",groupid);
+			}
 		sterlogger.getLogger().info("!! self error happened to self close."+sm.getAsSerial());
 		channelSend(getConfig().getChannelTopic(profile),
 				sm.getAsEncryptedSerial(
@@ -273,6 +276,8 @@ public class stersourcesink implements Runnable {
 				// init the communication by sending message
 				stermessage sm = new stermessage();
 				String uniqueid = stermessage.getUniqueID();
+				String groupid = stermessage.getUniqueID();
+				sterlogger.getLogger().info("&&&id,uid::"+uniqueid+","+groupid);// debug
 				sm.setMessage(-1,
 						stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
 						stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
@@ -281,6 +286,7 @@ public class stersourcesink implements Runnable {
 				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_HOST+"", targethost);
 				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_PORT+"", ""+targetport);
 				sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_TYPE+"", ""+targettype);
+				sm.setCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"", ""+groupid);
 				if (sp.getSecondSocksBindReply() != null) {
 					sm.setCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_SECONDREPLY+"", ""+sp.getSecondSocksBindReply());
 				}
@@ -311,7 +317,7 @@ public class stersourcesink implements Runnable {
 					bst.initTCP(is,
 							stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),resourceID),
 							stermessage.joinClusterNodeSubnode(getClusterID(), conf.getPeerNodeName(profile), uniqueid),
-							getConfig(),profile,resourceID);
+							getConfig(),profile,groupid);
 					new Thread(bst).start();
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -510,6 +516,7 @@ public class stersourcesink implements Runnable {
 								// TODO: create an error and return it!
 								sendSinkCloseMessageToHostBecauseOfError(sm);
 							}
+							String groupid = sm.getCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"");
 							sterrelaythread st = sterpool.relayfactory(getThisOne(),"si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
 							if (st == null) {
 								// TODO: error handling by message
@@ -525,7 +532,7 @@ public class stersourcesink implements Runnable {
 												sm.getFromCluster(),
 												sm.getFromNode(),
 												sm.getFromResourceID() ),
-												getConfig(), getProfile(), resource
+												getConfig(), getProfile(), groupid
 												);
 								new Thread(st).start();
 								String forwardrelay = sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_FORWARDONRELAY+"");
@@ -626,12 +633,13 @@ public class stersourcesink implements Runnable {
 							sterlogger.getLogger().info("!!!Socket nullified!!!"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
 					
 							// TODO: better release
-							sterrelaythread st = sterpool.getRelay("bc"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
-							if (st != null) { st.sheduleForExit(); }
-							st = sterpool.getRelay("si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
-							if (st != null) { st.sheduleForExit(); }
-							sterpool.relayrelease("bc"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
-							sterpool.relayrelease("si"+stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(), resource ));
+							String groupid = sm.getCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"");
+							sterlogger.getLogger().info("!!!Socket groupid!!!"+groupid);
+							if (groupid != null) {
+								sterpool.debugRelayThread();
+								sterpool.relayreleasebygroup(groupid);
+								sterpool.debugRelayThread();
+							}
 							
 						}				
 					} else {

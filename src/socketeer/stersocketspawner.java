@@ -45,6 +45,7 @@ public class stersocketspawner implements Runnable {
 				// TODO: error handling by message
 			}
 			try {
+				// TODO: groupid handling
 				st.setSourceSink(sosi);
 				st.initTCP(bs.getInputStream(),
 						stermessage.joinClusterNodeSubnode(
