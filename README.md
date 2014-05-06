@@ -41,7 +41,11 @@ Has frontends:
 
 Licence
 -------
-MIT licence.
+The core code is under MIT licence.
+
+Gozirra is under LGPL licence.
+
+Jars used are with LGPL and Apache Licenses.
 
 GUI
 ---
