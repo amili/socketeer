@@ -8,6 +8,8 @@ import java.net.Socket;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 
+import net.ser1.stomp.Listener;
+
 import socketeer.plugins.connection.sterplugin;
 
 /**
@@ -35,6 +37,8 @@ public class sterpool {
 		static ServerSocket[] ssoc = new ServerSocket[10]; // TODO
 		
 		static sterplugin[] plugins = new sterplugin[10]; // TODO, for now only 10
+		
+		sterlistfact listener = new sterlistfact(); // TODO: listener factory
 		
 		public sterpool(int sosilength, int rtlength, int soclength, int datagramlength) {
 			sosi = new stersourcesink[sosilength];
@@ -308,6 +312,18 @@ public class sterpool {
 			return plugins[pos];
 		}
 		
+		static public Listener getListener(String name) {
+			return sterlistfact.getListener(name);
+		}
+		
+		static public Listener getListener(String name, Listener l) {
+			return sterlistfact.getListener(name, l);
+		}
+		
+		static public boolean freeListener(String name) {
+			return sterlistfact.freeListener(name);
+		}
+		
 		static sterplugin getByProtocolID(String protocolid) {
 			for (int i=0;i<plugins.length;i++) {
 				if (plugins[i] != null) {
@@ -354,6 +370,10 @@ public class sterpool {
 					sterlogger.getLogger().info("Plugin ["+i+"]="+plugins[i]);
 				}
 			}
+		}
+		
+		static void debugListeners() {
+			sterlistfact.debugListeners();
 		}
 
 }

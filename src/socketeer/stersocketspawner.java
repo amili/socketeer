@@ -22,13 +22,20 @@ public class stersocketspawner implements Runnable {
 	//Client cli = null;
 	String profile = null;
 	
-	void setParams(int port, String secondReply, stersourcesink sosi, stermessage sm, Client cli, String profile) {
+	String groupid = null;
+	String subgroupid = null;
+	
+	void setParams(int port,
+					String secondReply, stersourcesink sosi, stermessage sm,
+					Client cli, String profile, String groupID, String subgroupID) {
 		this.port = port;
 		this.secondReply = secondReply;
 		this.sosi = sosi;
 		this.sm = sm;
 		//this.cli = cli;
 		this.profile = profile;
+		this.groupid = groupID;
+		this.subgroupid = subgroupID;
 	}
 	
 	void handleBinding() {
@@ -56,7 +63,8 @@ public class stersocketspawner implements Runnable {
 								sm.getFromCluster(),
 								sm.getFromNode(),
 								sm.getFromResourceID() ),
-								sosi.getConfig(), sosi.getProfile(), null
+								sosi.getConfig(), sosi.getProfile(),
+								groupid, subgroupid
 								);
 				new Thread(st).start();
 			} catch (IOException e) {

@@ -41,6 +41,9 @@ public class stersourcesink implements Runnable {
 	
 	gsLoader gsl = new gsLoader();
 	
+	boolean HandlerIsStopped = false;
+	int handlersubscriptioncounter = 0;
+	
 	void setClusterID(String clusterID) {
 		this.clusterID = clusterID;
 	}
@@ -79,6 +82,18 @@ public class stersourcesink implements Runnable {
 	
 	gsLoader getGenericStreamInterface() {
 		return gsl;
+	}
+	
+	void setHandlerEnabled() {
+		HandlerIsStopped = false;
+	}
+	
+	void setHandlerDisabled() {
+		HandlerIsStopped = true;
+	}
+	
+	boolean isHandlerDisabled() {
+		return HandlerIsStopped;
 	}
 	
 	Client cli = null;
@@ -361,9 +376,13 @@ public class stersourcesink implements Runnable {
 	
 	void handler (stermessage initmessage) {
 		
-		l = new Listener() {
+		//l = new Listener() {
+		l = sterpool.getListener(stermessage.joinClusterNodeSubnode(getClusterID(), getNodeID(),getResourceID()), new Listener() {
 
 			public void message(Map header, String body) {
+
+				if (isHandlerDisabled() == true) return;
+				
 				stermessage sm = new stermessage();
 				
 				sterlogger.getLogger().info("body is:"+body);
@@ -433,6 +452,10 @@ public class stersourcesink implements Runnable {
 					else if ( sm.getCommandNameConstant() == sterconst.MESSAGE_SEND) {
 						String resource = sm.getToResourceID();
 						sterlogger.getLogger().info("Sourcesend message!"+resource+","+sm.getToCluster()+","+sm.getToNode());
+						String groupid = sm.getCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"");
+						if (groupid != null) {
+							sterlogger.getLogger().info("Sourcesend groupid!"+groupid);
+						}
 						Socket sms = getSourceTCPsock();
 						sterlogger.getLogger().info("Source sending socket is!"+sms);
 						try {
@@ -564,7 +587,9 @@ public class stersourcesink implements Runnable {
 							int port = Integer.parseInt(sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_PORT+""));
 							String secondreply = sm.getCommandParameter(sterconst.MESSAGE_OPEN_PARAMETER_SECONDREPLY+"");
 							stersocketspawner spa = new stersocketspawner();
-							spa.setParams(port, secondreply, getThisOne(),sm,cli,profile);
+							String groupid = sm.getCommandParameter(sterconst.MESSAGE_PARAMETER_GROUPID+"");
+							spa.setParams(port, secondreply, getThisOne(),sm,cli,profile,
+										  groupid, stermessage.getUniqueID());
 							Thread bt = new Thread(spa);
 							bt.start();
 							sterlogger.getLogger().info("binding finished:"+port+","+secondreply);
@@ -639,19 +664,21 @@ public class stersourcesink implements Runnable {
 								sterpool.debugRelayThread();
 								sterpool.relayreleasebygroup(groupid);
 								sterpool.debugRelayThread();
-							}
-							
+							}	
 						}				
 					} else {
 						// unknown
 					}
 				}
 			}			
-		};
+		}); // end listener
 		
 		sterlogger.getLogger().info("*** channel is:"+ getConfig().getChannelTopic(getProfile()));
 		if (getConfig().getChannelTopic(getProfile()) != null) {
-			cli.subscribe( getConfig().getChannelTopic(getProfile()), l );
+			if (handlersubscriptioncounter < 1) { // only one subscription allowed, TODO: make configurable
+				cli.subscribe( getConfig().getChannelTopic(getProfile()), l );
+				handlersubscriptioncounter++;	
+			}
 		}
 		
 		// simulate an init message

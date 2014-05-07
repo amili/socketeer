@@ -31,14 +31,28 @@ public class sterrelaythread implements Runnable {
 	// execution control
 	boolean sheduledForExit = false;
 	
-	// TODO: group id, used for destroying
+	// TODO: better group id, used for destroying
 	String groupid = null;
+	String subgroupid = null;
 	
 	void sheduleForExit() {
 		sheduledForExit = true;
 	}
-	
-	void initTCP(InputStream is,String from, String to, sterconfig conf, String profile, String groupID) {
+
+	void initTCP(InputStream is,
+			String from, String to,
+			sterconfig conf, String profile,
+			String groupID) {
+			initTCP(is,
+				from, to,
+				conf, profile,
+				groupID, null);
+	}
+
+	void initTCP(InputStream is,
+				String from, String to,
+				sterconfig conf, String profile,
+				String groupID, String subgroupID) {
 		this.is = is;
 		this.from = from;
 		this.to = to;
@@ -46,6 +60,7 @@ public class sterrelaythread implements Runnable {
 		this.conf = conf;
 		this.profile = profile;
 		this.groupid = groupID;
+		this.subgroupid = subgroupID;
 	}
 	
 	void setSourceSink(stersourcesink sosi) {
@@ -66,6 +81,10 @@ public class sterrelaythread implements Runnable {
 	
 	String getGroupID() {
 		return groupid;
+	}
+	
+	String getSubGroupID() {
+		return subgroupid;
 	}
 	
 	void startTCPrelay() {
