@@ -485,6 +485,8 @@ public class stersourcesink implements Runnable {
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
+						// TODO: better unsubscription
+						cli.unsubscribe( getConfig().getChannelTopic(getProfile()), l );
 					}
 					else {
 						// unknown
@@ -675,10 +677,10 @@ public class stersourcesink implements Runnable {
 		
 		sterlogger.getLogger().info("*** channel is:"+ getConfig().getChannelTopic(getProfile()));
 		if (getConfig().getChannelTopic(getProfile()) != null) {
-			if (handlersubscriptioncounter < 1) { // only one subscription allowed, TODO: make configurable
+			//if (handlersubscriptioncounter < 1) { // only one subscription allowed, TODO: make configurable
 				cli.subscribe( getConfig().getChannelTopic(getProfile()), l );
-				handlersubscriptioncounter++;	
-			}
+				//handlersubscriptioncounter++;	
+			//}
 		}
 		
 		// simulate an init message

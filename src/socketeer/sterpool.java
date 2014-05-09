@@ -24,6 +24,7 @@ public class sterpool {
 
 		// default sizes
 		static stersourcesink[] sosi = new stersourcesink[10]; // sourcesink pool
+		static String[] sosiid = new String[10]; // sourcesink id's
 		
 		static sterrelaythread[] rt = new sterrelaythread[100]; // relay pool
 		static String[] rtid = new String[100];					// relay pool identifers
@@ -42,6 +43,7 @@ public class sterpool {
 		
 		public sterpool(int sosilength, int rtlength, int soclength, int datagramlength) {
 			sosi = new stersourcesink[sosilength];
+			sosiid = new String[sosilength];
 			rt = new sterrelaythread[rtlength];
 			soc = new Socket[soclength];
 			socid = new String[soclength];
@@ -57,6 +59,9 @@ public class sterpool {
 		void steerpoolinit() {
 			for (int i=0;i<sosi.length;i++) {
 				sosi[i] = null;
+			}
+			for (int i=0;i<sosiid.length;i++) {
+				sosiid[i] = null;
 			}
 			for (int i=0;i<rt.length;i++) {
 				rt[i] = null;
@@ -78,14 +83,22 @@ public class sterpool {
 			}
 		}
 		
-		static stersourcesink sourcesinkfactory() {
-			int first = getFreeSourceSink();
+		static stersourcesink sourcesinkfactory(String id) {
+			if (id == null) return null;
+			int first = getFreeSourceSink(id);
 			if (first < 0) return null;
 			sosi[first] = new stersourcesink();
 			return sosi[first];
 		}
 		
-		static int getFreeSourceSink() {
+		static int getFreeSourceSink(String id) {
+			if (id != null) {
+				for (int i=0;i<sosi.length;i++) {
+					if (sosiid[i] != null) {
+						if (sosiid[i].equals(id)) {return i;}	
+					}
+				}
+			}
 			for (int i=0;i<sosi.length;i++) {
 				if (sosi[i] == null) {return i;}
 			}

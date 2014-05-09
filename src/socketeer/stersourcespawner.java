@@ -46,7 +46,7 @@ public class stersourcespawner implements Runnable {
 	void startIt() {
 		try {
 			genericStream gt = new genericStream();
-			stersourcesink sosi = sterpool.sourcesinkfactory();
+			stersourcesink sosi = sterpool.sourcesinkfactory(profile);
 			if (isConsoleInsteadSocket == true) {
 				gt.setStreamsFromConsole();
 				if (sosi.init(channel, gt, conf, profile, cli) == false) {
@@ -59,7 +59,7 @@ public class stersourcespawner implements Runnable {
 					Socket spawned = source.accept();
 					sterlogger.getLogger().info("spawned:"+spawned);
 					gt.setStreamsFromSocket(spawned);
-					if (sosi.init(channel, gt, conf, profile, cli) == false) {
+					if (sterpool.sourcesinkfactory(profile).init(channel, gt, conf, profile, cli) == false) {
 						spawned.close();
 					}
 				}	

@@ -121,7 +121,7 @@ public class socketeer {
 		// init first sinks, than sources
 		for (int i=0;i<pns.length;i++) { // sinks
 			if (c.isSpanningAndResolvingSink(pns[i]) == true) {
-				stersourcesink sosi = sterpool.sourcesinkfactory();
+				stersourcesink sosi = sterpool.sourcesinkfactory(pns[i]);
 				sosi.init(c.getChannel(pns[i]), null,
 						  c, pns[i], null);
 			}
